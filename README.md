@@ -3,12 +3,38 @@
 An MCP server for bridging your local agent to a Colab session in the browser.
 
 # Supported Clients
-This MCP server requires client support for `notifications/tools/list_changed` and for the client to be running locally on your device. 
+The client must run locally on your device. Clients that support
+`notifications/tools/list_changed` can use notebook tools directly after connection.
+Clients such as Codex can use the permanent `colab_list_tools` and
+`colab_call_tool` tools to discover and call notebook tools after connection.
 
 Popular clients that fit these criteria include:
 - Gemini CLI
 - Claude Code
 - Windsurf
+- Codex (with `colab_list_tools` and `colab_call_tool`)
+
+## Codex local clone
+
+This clone contains 2 changes relative to upstream commit
+`b9ab3899e0f1fa493390b1fd6d54aa2e464ecdf1`: permanent notebook discovery/calling
+tools and a fix that preserves proxy startup after the 60-second connection wait.
+A timeout returns `false`; you can connect later or retry using the same server.
+Google's token validation, allowed browser origins, and single-notebook rule remain.
+
+Run this clone with `uv run --project /absolute/path/to/colab-mcp colab-mcp`.
+Then:
+
+1. Call `open_colab_browser_connection`.
+2. Connect your chosen notebook. Use **Connect separate tabs** to select an existing notebook.
+3. Call `colab_list_tools` for current names and input schemas.
+4. Call `colab_call_tool` with a tool name and matching arguments.
+
+Notebook results retain content, images, structured output, metadata, and the
+`isError` flag. The clone uses the existing MCP stdio transport, so it does not
+need the separate Codex adapter or its JSON-line reader. Request bounded cell
+ranges when reading output; the existing browser transport still applies its
+message limit. Restart the configured MCP server after a source update.
 
 
 # Setup

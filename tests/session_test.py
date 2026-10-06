@@ -204,6 +204,30 @@ class TestColabProxyClient:
         await client._start_task
 
     @pytest.mark.asyncio
+    async def test_timeout_then_late_connection(self, mock_wss):
+        client = session.ColabProxyClient(mock_wss)
+
+        async def start():
+            await mock_wss.connection_live.wait()
+            client.proxy_mcp_client = Mock()
+
+        client._start_task = asyncio.create_task(start())
+        try:
+            with patch("colab_mcp.session.UI_CONNECTION_TIMEOUT", 0.01):
+                for _ in range(2):
+                    await client.await_proxy_connection()
+                    assert not client._start_task.done()
+                    assert not client.is_connected()
+                mock_wss.connection_live.set()
+                await client.await_proxy_connection()
+                assert client.is_connected()
+                await client.await_proxy_connection()
+                assert client.is_connected()
+        finally:
+            client._start_task.cancel()
+            await asyncio.gather(client._start_task, return_exceptions=True)
+
+    @pytest.mark.asyncio
     @patch("colab_mcp.session.Client")
     @patch("colab_mcp.session.ColabTransport", spec=session.ColabTransport)
     async def test_start_proxy_client(
